@@ -1,4 +1,5 @@
 #include "i2s_audio_speaker.h"
+#include "i2s_driver_retry_policy.h"
 
 #ifdef USE_ESP32
 
@@ -111,11 +112,29 @@ void I2SAudioSpeakerBase::loop() {
         break;
       }
 
-      if (this->start_i2s_driver(this->audio_stream_info_) != ESP_OK) {
+      if (!driver_retry_due(millis(), this->driver_retry_after_)) {
+        break;
+      }
+      this->driver_retry_after_ = 0;
+
+      const esp_err_t driver_result = this->start_i2s_driver(this->audio_stream_info_);
+      if (driver_result != ESP_OK) {
+        const uint32_t now = millis();
+        const bool transient_bus_busy = driver_result == ESP_ERR_INVALID_STATE;
+        if (transient_bus_busy && this->driver_busy_since_ == 0) {
+          this->driver_busy_since_ = now;
+        }
+        const uint32_t busy_elapsed = transient_bus_busy ? now - this->driver_busy_since_ : 0;
+        if (driver_retry_decision(transient_bus_busy, busy_elapsed) == DriverRetryDecision::RETRY_SOON) {
+          this->driver_retry_after_ = now + 20U;
+          break;
+        }
+        this->driver_busy_since_ = 0;
         ESP_LOGE(TAG, "Driver failed to start; retrying in 1 second");
         this->status_momentary_error("driver-failure", 1000);
         break;
       }
+      this->driver_busy_since_ = 0;
 
       if (this->speaker_task_handle_ == nullptr) {
         xTaskCreate(I2SAudioSpeakerBase::speaker_task, "speaker_task", TASK_STACK_SIZE, (void *) this, TASK_PRIORITY,

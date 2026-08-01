@@ -354,7 +354,7 @@ esp_err_t I2SAudioSpeaker::start_i2s_driver(audio::AudioStreamInfo &audio_stream
 #endif  // USE_ESP32_VARIANT_ESP32
 
   if (!this->parent_->try_lock()) {
-    ESP_LOGE(TAG, "Parent bus is busy");
+    ESP_LOGD(TAG, "Parent bus is busy; scheduling a short retry");
     return ESP_ERR_INVALID_STATE;
   }
 

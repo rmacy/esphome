@@ -160,6 +160,8 @@ class I2SAudioSpeakerBase : public I2SAudioOut, public speaker::Speaker, public 
 
   gpio_num_t dout_pin_;
   i2s_chan_handle_t tx_handle_{nullptr};
+  uint32_t driver_busy_since_{0};
+  uint32_t driver_retry_after_{0};
 };
 
 }  // namespace esphome::i2s_audio
