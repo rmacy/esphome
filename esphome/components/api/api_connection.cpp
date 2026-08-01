@@ -63,7 +63,6 @@ namespace esphome::api {
 static constexpr uint8_t MAX_MESSAGES_PER_LOOP = 10;
 static constexpr uint8_t MAX_PING_RETRIES = 60;
 static constexpr uint16_t PING_RETRY_INTERVAL = 1000;
-static constexpr uint32_t KEEPALIVE_DISCONNECT_TIMEOUT = (KEEPALIVE_TIMEOUT_MS * 5) / 2;
 // Timeout for completing the handshake (Noise transport + HelloRequest).
 // A stalled handshake from a buggy client or network glitch holds a connection
 // slot, which can prevent legitimate clients from reconnecting. Also hardens
@@ -296,7 +295,7 @@ void APIConnection::loop() {
   // Keepalive: only call into the cold path when enough time has elapsed.
   // When sent_ping is true, last_traffic_ hasn't been updated so this
   // condition is already satisfied — covers both send-ping and disconnect cases.
-  if (now - this->last_traffic_ > KEEPALIVE_TIMEOUT_MS) {
+  if (should_check_api_keepalive(now - this->last_traffic_)) {
     this->check_keepalive_(now);
   }
 
@@ -314,14 +313,12 @@ void APIConnection::loop() {
 }
 
 void APIConnection::check_keepalive_(uint32_t now) {
-  // Caller guarantees: now - last_traffic_ > KEEPALIVE_TIMEOUT_MS
-  if (this->flags_.sent_ping) {
-    // Disconnect if not responded within 2.5*keepalive
-    if (now - this->last_traffic_ > KEEPALIVE_DISCONNECT_TIMEOUT) {
-      on_fatal_error();
-      this->log_client_(ESPHOME_LOG_LEVEL_WARN, LOG_STR("is unresponsive; disconnecting"));
-    }
-  } else if (!this->flags_.remove) {
+  // Caller guarantees that the initial keepalive interval has elapsed.
+  const uint32_t elapsed_ms = now - this->last_traffic_;
+  if (should_disconnect_api_keepalive(this->flags_.sent_ping, elapsed_ms)) {
+    on_fatal_error();
+    this->log_client_(ESPHOME_LOG_LEVEL_WARN, LOG_STR("is unresponsive; disconnecting"));
+  } else if (should_send_api_keepalive(this->flags_.sent_ping, this->flags_.remove)) {
     // Only send ping if we're not disconnecting
     ESP_LOGVV(TAG, "Sending keepalive PING");
     PingRequest req;

@@ -2,6 +2,7 @@
 
 #include "esphome/core/defines.h"
 #ifdef USE_API
+#include "api_keepalive_policy.h"
 #include "api_frame_helper.h"
 #ifdef USE_API_NOISE
 #include "api_frame_helper_noise.h"
@@ -40,8 +41,6 @@ namespace esphome::api {
 // Forward-declared to break the api_server.h cycle; full-type inlines are in api_connection_buffer.h.
 class APIServer;
 
-// Keepalive timeout in milliseconds
-static constexpr uint32_t KEEPALIVE_TIMEOUT_MS = 60000;
 // Maximum number of entities to process in a single batch during initial state/info sending
 // API 1.14+ clients compute object_id client-side, so messages are smaller and we can fit more per batch
 // TODO: Remove MAX_INITIAL_PER_BATCH_LEGACY before 2026.7.0 - all clients should support API 1.14 by then
