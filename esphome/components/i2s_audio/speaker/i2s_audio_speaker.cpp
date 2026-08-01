@@ -107,7 +107,7 @@ void I2SAudioSpeakerBase::loop() {
 
   // Handle the speaker's state
   switch (this->state_) {
-    case speaker::STATE_STARTING:
+    case speaker::STATE_STARTING: {
       if (this->status_has_error()) {
         break;
       }
@@ -147,6 +147,7 @@ void I2SAudioSpeakerBase::loop() {
         }
       }
       break;
+    }
     case speaker::STATE_RUNNING:   // Intentional fallthrough
     case speaker::STATE_STOPPING:  // Intentional fallthrough
     case speaker::STATE_STOPPED:
